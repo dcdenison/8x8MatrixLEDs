@@ -1,0 +1,164 @@
+// This #include statement was automatically added by the Particle IDE.
+#include <blynk.h>
+
+// This #include statement was automatically added by the Particle IDE.
+#include <ledmatrix-max7219-max7221.h>
+
+
+
+// Matrix with Particle Photon - works with v0.7.0-rc.3 with 2 Libaries
+// Ingo Lohs, v1.0 v. 03.01.2018
+// Simple LED Matrix Display with Blynk which display information from Terminal Widget
+// Uses up to 3 4x MAX7219 Dot Matrix Module to display messages / - Test worked with 1 4x MAX7219
+// Make sure you add these 2 libraries using the Particle IDE
+
+
+    /* 
+             -----[    ]-----
+       VCC  -|VIN        3V3|-    
+            -|GND        RST|-
+            -|TX        VBAT|-
+            -|RX         GND|- GND
+            -|WKP         D7|-
+            -|DAC         D6|-
+            -|A5          D5|-
+            -|A4          D4|- 
+            -|A3          D3|-     = DIN
+            -|A2          D2|-     = CS
+            -|A1          D1|- SCL = CLK
+            -|A0          D0|- SDA
+              \____________/
+             
+    */
+
+// **************
+
+// This #include statement was automatically added by the Particle IDE.
+#include <ledmatrix-max7219-max7221.h>
+#include <blynk.h>
+
+// **************
+
+char auth[] = "899f145a09754df3b7099b691ca8ed7a"; // Put your blynk token here
+
+LEDMatrix *led;
+
+int bitmapWidth = 8;            // 8 is default
+
+String text_default = "Welcome to District Hall. Take the Mixed Reality Challenge!";    // default string for display
+String text_from_terminal;
+String text;
+
+int textLength = text.length();
+
+// default position of the text is outside and then scrolls left
+int textX = bitmapWidth;
+int fontWidth = 5, space = 1;
+
+// **************
+
+void drawText(String s, int x)
+{
+  int y = 0;
+  for(int i = 0; i < s.length(); i++) {
+    // Adafruit_GFX method
+    led->drawChar(x + i*(fontWidth+space), y, s[i], true, false, 1);
+  }
+}
+
+// **************
+
+// In the Blynk app, I used the Terminal widget on virtual pin V1 to send text messages for display.  
+WidgetTerminal terminal(V1);
+
+// **************
+
+void setup() {
+    
+  // setup a time zone, which is part of the ISO6801 format 
+  Time.zone(+1.00);   // Berlin
+  
+  // setup pins and library
+  // 1 display per row, 1 display per column
+  // optional pin settings - default: CLK = A0, CS = A1, D_OUT = A2
+  // (pin settings is independent on HW SPI)
+  led = new LEDMatrix(12, 1, D1, D2, D3); // my pins vary from the default  // 4, 1 > 1 Matrix // 8, 1 > 2 Matrix  // 12, 1 > 3 Matrix
+  //led = new LEDMatrix(12, 1, D1, D2, D3); // my pins vary from the default  // 4, 1 > 1 Matrix // 8, 1 > 2 Matrix  // 12, 1 > 3 Matrix
+    // > add every matrix in the order in which they have been connected <
+  // the first matrix in a row, the first matrix in a column
+  // vertical orientation (-90°) and no mirroring - last three args optional
+  // the Wangdd22 Matrix has 4 matrix elements, arranged side-by-side
+  
+  // third Matrix  
+  led->addMatrix(11, 0, 0, false, false);
+  led->addMatrix(10, 0, 0, false, false);
+  led->addMatrix(9, 0, 0, false, false);
+  led->addMatrix(8, 0, 0, false, false);
+  
+  // second Matrix  
+led->addMatrix(7, 0, 0, false, false);
+led->addMatrix(6, 0, 0, false, false);
+led->addMatrix(5, 0, 0, false, false);
+led->addMatrix(4, 0, 0, false, false);
+
+  // first Matrix  
+  led->addMatrix(3, 0, 0, false, false);
+  led->addMatrix(2, 0, 0, false, false);
+  led->addMatrix(1, 0, 0, false, false);
+  led->addMatrix(0, 0, 0, false, false);
+  
+  Blynk.begin(auth);
+  
+}
+
+// BLYNK Terminal Widget ---------------------
+
+BLYNK_WRITE(V1) {
+   String cmd = param[0].asStr();
+   text_from_terminal = cmd;
+}
+
+// **************
+
+void loop() {
+  Blynk.run();   
+
+    if (text_from_terminal != "") {
+        text = text_from_terminal;
+        textLength = text.length();
+    }
+    else 
+    {
+        text = text_default;
+        textLength = text.length();
+    }
+
+  
+  if(led != NULL) {
+    drawText(text, textX--);
+    // text animation is ending when the whole text is outside the bitmap
+    if(textX < textLength*(fontWidth+space)*(-1)) {
+      // set default text position
+      textX = bitmapWidth;
+      // show heart
+      led->flush();
+      delay(333);   // 1000 is default
+      // turn all pixels off (takes effect after led->flush())
+      led->fillScreen(false);
+    }
+    // draw text
+    led->flush();
+    delay(125);   // 250 is default 
+  }
+  // animations end
+  else if (led != NULL) {
+    // shutdown all displays
+    led->shutdown(true);
+    // free memory
+    delete led;
+    led = NULL;
+  }
+}
+
+// **************
+
